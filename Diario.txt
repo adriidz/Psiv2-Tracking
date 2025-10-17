@@ -1,0 +1,2 @@
+Adri - 17/10
+He añadido el YOLOv11n con solamente la clase 2 que son los coches para que los identifique cada X frames. Puedes seleccionar si quieres que el video se vea rápido (velocidad de cómputo) o a 1x. Cuando le das a ESC se termina y solo procesa hasta donde has llegado del vídeo.
