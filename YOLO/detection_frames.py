@@ -1,3 +1,4 @@
+# python
 import os
 import sys
 import time
@@ -19,7 +20,6 @@ SETTINGS["weights_dir"] = str(YOLO_DIR / "weights")
 Path(SETTINGS["runs_dir"]).mkdir(parents=True, exist_ok=True)
 Path(SETTINGS["weights_dir"]).mkdir(parents=True, exist_ok=True)
 
-VIDEO_PATH = Path(r"Psiv2-Tracking\videos\output7.mp4")  # change this
 
 # --- Constants for playback and persistence ---
 PLAYBACK_OPTIONS = ["fast", "1x"]
@@ -50,7 +50,7 @@ def window_closed(win_name: str) -> bool:
     except cv2.error:
         return True
 
-def main():
+def parse_args():
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--weights", type=str, default=str(YOLO_DIR / "weights" / "yolo11n.pt"))
@@ -59,19 +59,17 @@ def main():
     p.add_argument("--skip", type=int, default=20, help="Run inference every N frames")
     p.add_argument("--display", action="store_true", default=True, help="Show window (press Q to quit)")  # default ON
     p.add_argument("--reuse-last", action="store_true", default=True, help="Draw last detections on skipped frames")  # default True
-    # removed: --playback and --persist (use constants above)
-    args = p.parse_args()
+    return p.parse_args()
 
-    if not VIDEO_PATH.exists():
-        print(f"Video not found: {VIDEO_PATH}")
-        sys.exit(1)
-
-    cap = cv2.VideoCapture(str(VIDEO_PATH))  # ensure string path
+def open_capture(video_path: Path):
+    if not video_path.exists():
+        raise FileNotFoundError(f"Video not found: {video_path}")
+    cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
-        print(f"Could not open video source: {VIDEO_PATH}")
-        sys.exit(1)
+        raise IOError(f"Could not open video source: {video_path}")
+    return cap
 
-    # Prepare output video writer
+def prepare_writer(cap: cv2.VideoCapture):
     width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps_in = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -82,45 +80,47 @@ def main():
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(out_path), fourcc, fps_in, (width, height))
     if not writer.isOpened():
-        # Fallback to AVI if MP4 encoder unavailable
         out_path = out_dir / f"cars_{ts}.avi"
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         writer = cv2.VideoWriter(str(out_path), fourcc, fps_in, (width, height))
+    return writer, out_path, width, height, fps_in
 
-    # Real-time pacing base
+def init_model(weights_path: str):
+    return YOLO(weights_path)
+
+def setup_display_if_needed(display: bool, width: int, height: int):
+    if not display:
+        return
+    win_name = "cars"
+    cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
+    try:
+        from ctypes import windll
+        user32 = windll.user32
+        user32.SetProcessDPIAware()
+        screen_w = user32.GetSystemMetrics(0)
+        screen_h = user32.GetSystemMetrics(1)
+    except Exception:
+        screen_w, screen_h = 1920, 1080
+
+    scale = min(0.8 * screen_w / width, 0.8 * screen_h / height, 1.0)
+    win_w = max(1, int(width * scale))
+    win_h = max(1, int(height * scale))
+    cv2.resizeWindow(win_name, win_w, win_h)
+    try:
+        cv2.setWindowProperty(win_name, cv2.WND_PROP_ASPECT_RATIO, cv2.WINDOW_KEEPRATIO)
+    except cv2.error:
+        pass
+    return win_name
+
+def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, width: int, height: int, fps_in: float, out_path: Path):
     frame_period = 1.0 / (fps_in if fps_in > 0 else 30.0)
     next_frame_ts = time.perf_counter() + frame_period
 
-    model = YOLO(args.weights)
-
-    if args.display:
-        cv2.namedWindow("cars", cv2.WINDOW_NORMAL)
-
-        # Fit window to 80% of screen while preserving the video's aspect ratio
-        try:
-            from ctypes import windll
-            user32 = windll.user32
-            user32.SetProcessDPIAware()
-            screen_w = user32.GetSystemMetrics(0)
-            screen_h = user32.GetSystemMetrics(1)
-        except Exception:
-            screen_w, screen_h = 1920, 1080
-
-        scale = min(0.8 * screen_w / width, 0.8 * screen_h / height, 1.0)
-        win_w = max(1, int(width * scale))
-        win_h = max(1, int(height * scale))
-        cv2.resizeWindow("cars", win_w, win_h)
-
-        # Keep aspect ratio even if the user resizes the window
-        try:
-            cv2.setWindowProperty("cars", cv2.WND_PROP_ASPECT_RATIO, cv2.WINDOW_KEEPRATIO)
-        except cv2.error:
-            pass
-
     last_result = None
-    last_age = 0  # frames since last inference
+    last_age = 0
     frame_idx = 0
     t0 = time.time()
+    win_name = "cars" if args.display else None
 
     while True:
         ok, frame = cap.read()
@@ -149,9 +149,9 @@ def main():
         writer.write(annotated)
 
         if args.display:
-            if window_closed("cars"):
+            if window_closed(win_name):
                 break
-            cv2.imshow("cars", annotated)
+            cv2.imshow(win_name, annotated)
 
             if PLAYBACK == "1x":
                 now = time.perf_counter()
@@ -174,6 +174,5 @@ def main():
 
     elapsed = time.time() - t0
     print(f"Frames: {frame_idx} | Elapsed: {elapsed:.1f}s | Out: {out_path}")
+    return frame_idx, elapsed, out_path
 
-if __name__ == "__main__":
-    main()
