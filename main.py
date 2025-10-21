@@ -9,7 +9,7 @@ import argparse
 import cv2
 from ultralytics import YOLO
 from ultralytics.utils import SETTINGS
-from YOLO.detection_frames import *
+from detection_frames import *
 
 VIDEO_PATH = Path(r"videos\output7.mp4")
 
