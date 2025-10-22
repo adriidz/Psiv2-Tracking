@@ -12,7 +12,7 @@ os.environ["ULTRALYTICS_HOME"] = str(Path(__file__).resolve().parent)
 import cv2
 from ultralytics import YOLO
 from ultralytics.utils import SETTINGS
-
+from VehicleCounter import VehicleCounter
 CAR_CLASS_ID = 2  # COCO: 2 = car
 
 YOLO_DIR = Path(__file__).resolve().parent
@@ -113,7 +113,12 @@ def setup_display_if_needed(display: bool, width: int, height: int):
         pass
     return win_name
 
-def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, width: int, height: int, fps_in: float, out_path: Path):
+
+def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, width: int, height: int, fps_in: float,
+                   out_path: Path):
+    counter = VehicleCounter(line_position=2 / 3, margin=5)
+    counter.set_line_position(height)
+
     frame_period = 1.0 / (fps_in if fps_in > 0 else 30.0)
     next_frame_ts = time.perf_counter() + frame_period
 
@@ -139,21 +144,24 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
                 verbose=False
             )
             last_result = results[0] if results else None
-            annotated = draw_boxes(frame.copy(), last_result)
             last_age = 0
             if last_result is not None:
                 print(f"Frame {frame_idx}: {len(last_result.boxes)} cars")
-        else:
-            annotated = frame.copy()
-            last_age += 1
-            if args.reuse_last and last_result is not None and last_age <= PERSIST_FRAMES:
-                annotated = draw_boxes(annotated, last_result, label_suffix="*")
 
         detections = yolo_result_to_detections(last_result) if last_result is not None else []
-        tracks = tracker.update(frame, detections)
+        track_ids = tracker.update(frame, detections)
 
-        # dibujar IDs y trayectorias (opcional; puedes reemplazar draw_boxes):
+        # Actualizar contador usando el último centroide del objeto Car
+        for track_id, car in track_ids.items():
+            if car.centroids:
+                center_x, center_y = car.centroids[-1]
+                counter.update(track_id, int(center_y))
+
+        # Dibujar tracks en el frame
         annotated = tracker.draw_tracks(frame.copy(), min_hits=1)
+
+        # Dibujar línea y contadores
+        counter.draw(annotated)
 
         writer.write(annotated)
 
@@ -171,7 +179,7 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
             else:
                 key = cv2.waitKey(1) & 0xFF
 
-            if key in (ord("q"), 27):  # q or ESC
+            if key in (ord("q"), 27):
                 break
 
         frame_idx += 1
@@ -183,5 +191,5 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
 
     elapsed = time.time() - t0
     print(f"Frames: {frame_idx} | Elapsed: {elapsed:.1f}s | Out: {out_path}")
+    print(f"Conteo final - Arriba->Abajo: {counter.count_down} | Abajo->Arriba: {counter.count_up}")
     return frame_idx, elapsed, out_path
-
