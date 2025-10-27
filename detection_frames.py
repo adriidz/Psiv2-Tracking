@@ -113,10 +113,11 @@ def setup_display_if_needed(display: bool, width: int, height: int):
         pass
     return win_name
 
+
 def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, width: int, height: int, fps_in: float,
                    out_path: Path, tracker: Tracker):
     # Contador horizontal (cuenta ambas direcciones: arriba-abajo)
-    counter_horizontal = VehicleCounter(line_position=2/3, margin=5, orientation='horizontal')
+    counter_horizontal = VehicleCounter(line_position=2 / 3, margin=5, orientation='horizontal')
     counter_horizontal.set_line_position(height)
 
     # Línea vertical izquierda (solo cuenta der->izq)
@@ -140,6 +141,8 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
         if not ok:
             break
 
+        frame_shape = frame.shape  # Dimensiones del frame
+
         if args.skip <= 1 or frame_idx % args.skip == 0:
             results = model.predict(
                 source=frame,
@@ -155,24 +158,47 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
         detections = yolo_result_to_detections(last_result) if last_result is not None else []
         track_ids = tracker.update(frame, detections)
 
-        # Actualizar los tres contadores
+        # Actualizar los tres contadores con frame_shape y límites de línea
         for track_id, car in track_ids.items():
             if car.centroids:
                 center_x, center_y = car.centroids[-1]
-                counter_horizontal.update(track_id, center_x=int(center_x), center_y=int(center_y))
-                counter_left.update(track_id, center_x=int(center_x), center_y=int(center_y))
-                counter_right.update(track_id, center_x=int(center_x), center_y=int(center_y))
+
+                # Contador horizontal (línea verde completa)
+                counter_horizontal.update(
+                    track_id,
+                    center_x=int(center_x),
+                    center_y=int(center_y),
+                    line_start=0.0,
+                    line_end=1.0,
+                    frame_shape=frame_shape
+                )
+
+                # Línea vertical izquierda (roja) - estirada de 0.2 a 0.85
+                counter_left.update(
+                    track_id,
+                    center_x=int(center_x),
+                    center_y=int(center_y),
+                    line_start=0.2,
+                    line_end=0.4,
+                    frame_shape=frame_shape
+                )
+
+                # Línea vertical derecha (azul) - estirada de 0.2 a 0.85
+                counter_right.update(
+                    track_id,
+                    center_x=int(center_x),
+                    center_y=int(center_y),
+                    line_start=0.2,
+                    line_end=0.4,
+                    frame_shape=frame_shape
+                )
 
         annotated = tracker.draw_tracks(frame.copy(), min_hits=1)
 
-        # Línea horizontal: solo en el tercio central horizontal
+        # Dibujar líneas con los mismos límites
         counter_horizontal.draw(annotated, color=(0, 255, 0), label_y_start=30, line_start=0.0, line_end=1.0)
-
-        # Línea vertical izquierda: solo en el tercio superior (0.0 a 0.33)
-        counter_left.draw(annotated, color=(255, 0, 0), label_y_start=90, line_start=0.0, line_end=0.33)
-
-        # Línea vertical derecha: solo en el tercio superior (0.0 a 0.33)
-        counter_right.draw(annotated, color=(0, 0, 255), label_y_start=120, line_start=0.0, line_end=0.33)
+        counter_left.draw(annotated, color=(255, 0, 0), label_y_start=90, line_start=0.2, line_end=0.4)
+        counter_right.draw(annotated, color=(0, 0, 255), label_y_start=120, line_start=0.2, line_end=0.4)
 
         writer.write(annotated)
 

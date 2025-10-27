@@ -29,12 +29,34 @@ class VehicleCounter:
                 raise ValueError("width requerido para orientación vertical")
             self.line_pos = float(width * self.line_position)
 
-    def update(self, track_id, center_x=None, center_y=None):
-        """Actualiza el tracking y cuenta cruces según orientación y dirección."""
+    def update(self, track_id, center_x=None, center_y=None, line_start=0.0, line_end=1.0, frame_shape=None):
+        """
+        Args:
+            line_start: Posición relativa de inicio del segmento visible (0.0 a 1.0)
+            line_end: Posición relativa de fin del segmento visible (0.0 a 1.0)
+            frame_shape: (height, width) del frame para calcular límites
+        """
         if self.line_pos is None:
             return
 
         current_pos = float(center_x if self.orientation == 'vertical' else center_y)
+        perpendicular_pos = float(center_y if self.orientation == 'vertical' else center_x)
+
+        # Verificar si el vehículo está dentro del segmento visible
+        if frame_shape is not None:
+            height, width = frame_shape[:2]
+            if self.orientation == 'horizontal':
+                segment_start = int(width * line_start)
+                segment_end = int(width * line_end)
+            else:  # vertical
+                segment_start = int(height * line_start)
+                segment_end = int(height * line_end)
+
+            # Si está fuera del segmento visible, no contar
+            if not (segment_start <= perpendicular_pos <= segment_end):
+                if track_id in self.tracked_objects:
+                    self.tracked_objects[track_id]['last_pos'] = current_pos
+                return
 
         if track_id not in self.tracked_objects:
             self.tracked_objects[track_id] = {'last_pos': current_pos, 'counted': False}
@@ -50,16 +72,16 @@ class VehicleCounter:
             # Detecta cruce por cambio de signo
             if (last_pos - self.line_pos) * (current_pos - self.line_pos) < 0:
                 if self.direction is None or \
-                   (self.direction == 'left_to_right' and is_forward) or \
-                   (self.direction == 'right_to_left' and not is_forward):
+                        (self.direction == 'left_to_right' and is_forward) or \
+                        (self.direction == 'right_to_left' and not is_forward):
                     crossed = True
                     count_this = 'forward' if is_forward else 'backward'
 
             # Fallback con margen
             elif abs(current_pos - self.line_pos) <= self.margin and abs(current_pos - last_pos) >= self.min_movement:
                 if self.direction is None or \
-                   (self.direction == 'left_to_right' and last_pos < self.line_pos <= current_pos) or \
-                   (self.direction == 'right_to_left' and last_pos > self.line_pos >= current_pos):
+                        (self.direction == 'left_to_right' and last_pos < self.line_pos <= current_pos) or \
+                        (self.direction == 'right_to_left' and last_pos > self.line_pos >= current_pos):
                     crossed = True
                     count_this = 'forward' if is_forward else 'backward'
 

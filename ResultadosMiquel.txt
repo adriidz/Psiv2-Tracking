@@ -1,0 +1,37 @@
+Con tracker Hibrido:
+
+Output 2 resultados - Sequencia middle:
+Frames: 12610 | Elapsed: 434.3s | Out: C:\Users\mique\OneDrive\Escritorio\Proyectos\Psiv2-Tracking\runs\cars_video\cars_20251027_234730.mp4
+Arriba->Abajo: 7 | Abajo->Arriba: 5 CORRECTO
+Der->Izq: 41 | Izq->Der: 35
+
+Output3 resultados - Sequencia Shadow:
+No da resultados correctos con tracker mixto
+
+Output 4 resultados - Sequencia Long2:
+
+
+Output 5 resultados - Sequencia Long1:
+
+
+
+
+Output 7 resultados - Sequencia Short:
+Frames: 7288 | Elapsed: 334.6s | Out: C:\Users\mique\OneDrive\Escritorio\Proyectos\Psiv2-Tracking\runs\cars_video\cars_20251027_235840.mp4
+Arriba->Abajo: 2 | Abajo->Arriba: 6 CORRECTO
+Der->Izq: 26 | Izq->Der: 13
+
+-------
+Con tracker Cristian:
+Output 2 resultados - Sequencia middle:
+
+Output3 resultados - Sequencia Shadow:
+Frames: 21695 | Elapsed: 641.9s | Out: C:\Users\mique\OneDrive\Escritorio\Proyectos\Psiv2-Tracking\runs\cars_video\cars_20251028_001310.mp4
+Arriba->Abajo: 10 | Abajo->Arriba: 3 - CORRECTO
+Der->Izq: 74 | Izq->Der: 14
+
+Output 4 resultados - Sequencia Long2:
+
+Output 5 resultados - Sequencia Long1:
+
+Output 7 resultados - Sequencia Short:
