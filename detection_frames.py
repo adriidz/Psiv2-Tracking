@@ -113,17 +113,24 @@ def setup_display_if_needed(display: bool, width: int, height: int):
         pass
     return win_name
 
-
 def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, width: int, height: int, fps_in: float,
                    out_path: Path, tracker: Tracker):
-    counter = VehicleCounter(line_position=2 / 3, margin=5)
-    counter.set_line_position(height)
+    # Contador horizontal (cuenta ambas direcciones: arriba-abajo)
+    counter_horizontal = VehicleCounter(line_position=2/3, margin=5, orientation='horizontal')
+    counter_horizontal.set_line_position(height)
+
+    # Línea vertical izquierda (solo cuenta der->izq)
+    counter_left = VehicleCounter(line_position=0.25, margin=3, orientation='vertical', direction='right_to_left')
+    counter_left.set_line_position(height, width)
+
+    # Línea vertical derecha (solo cuenta izq->der)
+    counter_right = VehicleCounter(line_position=0.95, margin=3, orientation='vertical', direction='left_to_right')
+    counter_right.set_line_position(height, width)
 
     frame_period = 1.0 / (fps_in if fps_in > 0 else 30.0)
     next_frame_ts = time.perf_counter() + frame_period
 
     last_result = None
-    last_age = 0
     frame_idx = 0
     t0 = time.time()
     win_name = "cars" if args.display else None
@@ -142,24 +149,30 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
                 verbose=False
             )
             last_result = results[0] if results else None
-            last_age = 0
             if last_result is not None:
                 print(f"Frame {frame_idx}: {len(last_result.boxes)} cars")
 
         detections = yolo_result_to_detections(last_result) if last_result is not None else []
         track_ids = tracker.update(frame, detections)
 
-        # Actualizar contador usando el último centroide del objeto Car
+        # Actualizar los tres contadores
         for track_id, car in track_ids.items():
             if car.centroids:
                 center_x, center_y = car.centroids[-1]
-                counter.update(track_id, int(center_y))
+                counter_horizontal.update(track_id, center_x=int(center_x), center_y=int(center_y))
+                counter_left.update(track_id, center_x=int(center_x), center_y=int(center_y))
+                counter_right.update(track_id, center_x=int(center_x), center_y=int(center_y))
 
-        # Dibujar tracks en el frame
         annotated = tracker.draw_tracks(frame.copy(), min_hits=1)
 
-        # Dibujar línea y contadores
-        counter.draw(annotated)
+        # Línea horizontal: solo en el tercio central horizontal
+        counter_horizontal.draw(annotated, color=(0, 255, 0), label_y_start=30, line_start=0.0, line_end=1.0)
+
+        # Línea vertical izquierda: solo en el tercio superior (0.0 a 0.33)
+        counter_left.draw(annotated, color=(255, 0, 0), label_y_start=90, line_start=0.0, line_end=0.33)
+
+        # Línea vertical derecha: solo en el tercio superior (0.0 a 0.33)
+        counter_right.draw(annotated, color=(0, 0, 255), label_y_start=120, line_start=0.0, line_end=0.33)
 
         writer.write(annotated)
 
@@ -189,5 +202,6 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
 
     elapsed = time.time() - t0
     print(f"Frames: {frame_idx} | Elapsed: {elapsed:.1f}s | Out: {out_path}")
-    print(f"Conteo final - Arriba->Abajo: {counter.count_down} | Abajo->Arriba: {counter.count_up}")
+    print(f"Arriba->Abajo: {counter_horizontal.count_forward} | Abajo->Arriba: {counter_horizontal.count_backward}")
+    print(f"Der->Izq: {counter_left.count_backward} | Izq->Der: {counter_right.count_forward}")
     return frame_idx, elapsed, out_path

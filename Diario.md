@@ -8,17 +8,22 @@
 ### Lista de tareas:
 - Tracker de vehículos usando YOLOv11n y métricas de IoU y predicción de movimiento (Cristian)
 - Contador de vehículos que pasen por una línea horizontal (Miquel)
+- Contador de vehículos que pasen por una línea vertical (Miquel)
+- TODO: añadir opción en main.py para elegir conteo vertical, horizontal o ambos.
 #### Tareas empezadas:
 - Tracker de vehículos usando YOLOv11n y métricas de IoU y predicción de movimiento (Cristian). Mejorar tracker con predicción de movimiento, oclusiones, etc (Comentario Miquel)
 - Tracker híbrido (Adri)
+- Contador de vehículos que pasen por una línea vertical (Miquel)
 #### Tareas Completadas:
 - Tracker de vehículos usando YOLOv11n y métricas de IoU y predicción de movimiento (Cristian)
 - Contador de vehículos que pasen por una línea horizontal (Miquel)
 #### Tareas Testeadas:
 - Tracker de vehículos usando YOLOv11n y métricas de IoU y predicción de movimiento (Cristian)
 - Contador de vehículos que pasen por una línea horizontal (Miquel)
+- Contador de vehículos que pasen por una línea vertical (Miquel)
 #### Tareas Terminadas
-
+- Tracker de vehículos usando YOLOv11n y métricas de IoU y predicción de movimiento (Cristian)
+- Contador de vehículos que pasen por una línea horizontal (Miquel)
 ### Diario de Trabajo:
 
 #### Sesión Adri - 17/10
@@ -49,3 +54,12 @@ Parece hacer el conteo correctamente. Habría que prpbar todos los vídeos para 
 Hice la clase TrackerHíbrido que usa IoU primero, y si el resultado no es convincente, usa otros criterios a los cuales les asigna un peso (importancia) a cada uno para calcular el nuevo resultado. Es como comentamos con el profe, en forma de 'cascada' solo que también usa pesos. He bajado a 3 el skip y ahora se hace la prueba con el output2.mp4 (el segundo video del campus), donde el contador va regulín. 
 
 P.D. intenté seguir el criterio que solo esté el _match pero no se hasta que punto las funciones de utilities son "universales" asi que bueno... están marcadas cuáles son
+
+### Sesión Miquel 27/10
+El contador de arriba a abajo parece funcionar siempre. Hay que ejecutarlo con todos los vídeos y guardar los resultados.
+Creado contador izquierda a derecha. Funciona ok, falla cuando hay oclusiones o cuando deja de detectar
+vehículos y los vuelve a detectar como uno diferente. Por ende hay que mejorar algo pero no tengo claro
+si es el tracker o el contador el problema. Es díficil saberlo
+
+Cambios en el process_frames para crear el contador de izquierda a derecha y llamar a  update.
+Faltaría tal vez hacer una opcion en el main para contar solo de arriba abajo, solo de izquierda a derecha o ambos.
