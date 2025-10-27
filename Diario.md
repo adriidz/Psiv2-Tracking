@@ -63,3 +63,7 @@ si es el tracker o el contador el problema. Es díficil saberlo
 
 Cambios en el process_frames para crear el contador de izquierda a derecha y llamar a  update.
 Faltaría tal vez hacer una opcion en el main para contar solo de arriba abajo, solo de izquierda a derecha o ambos.
+
+### Sesión Miquel 28/10
+Probados videos middle, shadow y short. Pequeños ajustes en la línea de conteo para que se vea mejor y esté en la posición correcta usando 
+line_start y line_end.
