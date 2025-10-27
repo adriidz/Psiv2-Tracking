@@ -4,7 +4,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from tracker import Tracker, yolo_result_to_detections
+from tracker import *
 
 # Must be set before importing ultralytics
 os.environ["ULTRALYTICS_HOME"] = str(Path(__file__).resolve().parent)
@@ -115,7 +115,7 @@ def setup_display_if_needed(display: bool, width: int, height: int):
 
 
 def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, width: int, height: int, fps_in: float,
-                   out_path: Path):
+                   out_path: Path, tracker: Tracker):
     counter = VehicleCounter(line_position=2 / 3, margin=5)
     counter.set_line_position(height)
 
@@ -127,8 +127,6 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
     frame_idx = 0
     t0 = time.time()
     win_name = "cars" if args.display else None
-
-    tracker = Tracker(iou_threshold=0.15, max_lost=15, min_hits=1)
 
     while True:
         ok, frame = cap.read()

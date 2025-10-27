@@ -6,99 +6,11 @@ import time
 import math
 import cv2
 import numpy as np
+from car import Car
+from utilities import *
+import random
 
 BBox = Tuple[int, int, int, int]  # (x1, y1, x2, y2)
-
-# ----------------------------- Utilidades -----------------------------
-
-def iou(boxA: BBox, boxB: BBox) -> float:
-    xA = max(boxA[0], boxB[0])
-    yA = max(boxA[1], boxB[1])
-    xB = min(boxA[2], boxB[2])
-    yB = min(boxA[3], boxB[3])
-    inter_w = max(0, xB - xA)
-    inter_h = max(0, yB - yA)
-    inter = inter_w * inter_h
-    if inter == 0:
-        return 0.0
-    areaA = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
-    areaB = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
-    return inter / float(areaA + areaB - inter + 1e-9)
-
-def bbox_center(b: BBox) -> Tuple[float, float]:
-    x1, y1, x2, y2 = b
-    return (0.5 * (x1 + x2), 0.5 * (y1 + y2))
-
-def compute_hsv_hist(frame: np.ndarray, bbox: BBox, bins: int = 16) -> np.ndarray:
-    """Histograma HSV normalizado (H,S,V) concatenado (bins por canal)."""
-    x1, y1, x2, y2 = bbox
-    h, w = frame.shape[:2]
-    x1 = max(0, min(w - 1, x1))
-    x2 = max(0, min(w - 1, x2))
-    y1 = max(0, min(h - 1, y1))
-    y2 = max(0, min(h - 1, y2))
-    if x2 <= x1 or y2 <= y1:
-        return np.zeros((bins*3,), dtype=np.float32)
-    crop = frame[y1:y2, x1:x2]
-    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-    hist_h = cv2.calcHist([hsv], [0], None, [bins], [0, 180]).flatten()
-    hist_s = cv2.calcHist([hsv], [1], None, [bins], [0, 256]).flatten()
-    hist_v = cv2.calcHist([hsv], [2], None, [bins], [0, 256]).flatten()
-    hist = np.concatenate([hist_h, hist_s, hist_v]).astype(np.float32)
-    s = hist.sum()
-    if s > 0:
-        hist /= s
-    return hist
-
-# ------------------------------- Car ----------------------------------
-
-@dataclass
-class Car:
-    track_id: int
-    bbox: BBox
-    confidence: float
-    created_at: float = field(default_factory=time.time)
-    last_seen: float = field(default_factory=time.time)
-    hits: int = 1                 # nº de veces emparejado con una detección
-    lost: int = 0                 # nº de frames consecutivos sin ser emparejado
-    centroids: List[Tuple[float, float]] = field(default_factory=list)
-    hsv_hist: Optional[np.ndarray] = None
-
-    def update(self, frame: np.ndarray, bbox: BBox, confidence: float):
-        self.bbox = bbox
-        self.confidence = confidence
-        self.last_seen = time.time()
-        self.hits += 1
-        self.lost = 0
-        self.centroids.append(bbox_center(bbox))
-        # (opcional) refrescar histograma cada n actualizaciones para ahorrar coste
-        if self.hsv_hist is None or (self.hits % 10 == 0):
-            self.hsv_hist = compute_hsv_hist(frame, bbox)
-
-    def mark_missed(self):
-        self.lost += 1
-
-    @property
-    def age(self) -> float:
-        return time.time() - self.created_at
-
-    def current_direction(self) -> Optional[str]:
-        """
-        Devuelve 'up', 'down' o None según el desplazamiento vertical predominante.
-        Pensado para calles verticales (y crece hacia abajo en imágenes).
-        """
-        if len(self.centroids) < 2:
-            return None
-        # vector medio de los últimos k desplazamientos
-        k = min(5, len(self.centroids) - 1)
-        dy = 0.0
-        for i in range(-k, -1):
-            y_prev = self.centroids[i][1]
-            y_next = self.centroids[i + 1][1]
-            dy += (y_next - y_prev)
-        if abs(dy) < 1e-3:
-            return None
-        return "down" if dy > 0 else "up"
 
 # ------------------------------ Tracker -------------------------------
 
@@ -235,3 +147,11 @@ def yolo_result_to_detections(result) -> List[Tuple[BBox, float]]:
         conf = float(b.conf)
         dets.append(((x1, y1, x2, y2), conf))
     return dets
+
+class Trackermalo(Tracker):
+    def __init__(self, iou_threshold = 0.3, max_lost = 15, min_hits = 1):
+        super().__init__(iou_threshold, max_lost, min_hits)
+    
+    def _match(self, detections):
+        # Cambios aquí
+        return None, None, None

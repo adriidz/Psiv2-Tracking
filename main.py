@@ -26,7 +26,9 @@ def main():
     model = init_model(args.weights)
     setup_display_if_needed(args.display, width, height)
 
-    process_frames(cap, writer, model, args, width, height, fps_in, out_path)
+    tracker = Trackermalo(iou_threshold=0.15, max_lost=15, min_hits=1)
+
+    process_frames(cap, writer, model, args, width, height, fps_in, out_path, tracker)
 
 if __name__ == "__main__":
     main()

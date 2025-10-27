@@ -37,6 +37,7 @@ También cabe decir que he hecho una copia de detection frames que usa el Tracke
 - Contador Vertical: No implementado
 - Contador Horizontal: No implementado
 - Tracker: Solo IoU puro
+
 #### Sesión Miquel 22/10
 Se ha añadido VehicleCounter.py que contiene la clase VehicleCounter encargada de contar los vehículos que pasan por una línea horizontal o vertical( en este caso solo está la horizontal hecha)
 Modifiqué también el process_frames donde crea la clase vehicleCounter y llama a update para contar los vehículos que pasan por la línea. 
