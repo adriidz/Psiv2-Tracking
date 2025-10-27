@@ -6,6 +6,7 @@ import time
 import math
 import cv2
 import numpy as np
+from typing import Any
 
 BBox = Tuple[int, int, int, int]  # (x1, y1, x2, y2)
 
@@ -47,3 +48,73 @@ def compute_hsv_hist(frame: np.ndarray, bbox: BBox, bins: int = 16) -> np.ndarra
     if s > 0:
         hist /= s
     return hist
+
+# ---------------- Additional scoring utilities for hybrid tracker ----------------
+
+def predict_center(track: Any) -> Tuple[float, float]:
+    """Predict next centroid using last motion; falls back to last center."""
+    if hasattr(track, 'centroids') and len(track.centroids) >= 2:
+        (x_prev, y_prev) = track.centroids[-2]
+        (x_last, y_last) = track.centroids[-1]
+        vx = x_last - x_prev
+        vy = y_last - y_prev
+        return (x_last + 1.1 * vx, y_last + 1.1 * vy)
+    if hasattr(track, 'centroids') and len(track.centroids) == 1:
+        return track.centroids[-1]
+    # fallback to bbox center
+    return bbox_center(track.bbox)
+
+def aspect_score(track: Any, det_bbox: BBox) -> float:
+    tw = track.bbox[2] - track.bbox[0]
+    th = track.bbox[3] - track.bbox[1]
+    dw = det_bbox[2] - det_bbox[0]
+    dh = det_bbox[3] - det_bbox[1]
+    if th <= 0 or dh <= 0:
+        return 0.0
+    ar_t = tw / max(1e-6, th)
+    ar_d = dw / max(1e-6, dh)
+    score = 1.0 - abs(ar_t - ar_d) / max(ar_t, ar_d)
+    return float(max(0.0, min(1.0, score)))
+
+def distance_score(track: Any, det_center: Tuple[float, float]) -> float:
+    pred = predict_center(track)
+    dx = pred[0] - det_center[0]
+    dy = pred[1] - det_center[1]
+    dist = math.hypot(dx, dy)
+    w = max(1.0, (track.bbox[2] - track.bbox[0]))
+    h = max(1.0, (track.bbox[3] - track.bbox[1]))
+    diag = math.hypot(w, h)
+    max_dist = max(1.0, 5.0 * diag)
+    score = max(0.0, 1.0 - (dist / max_dist))
+    return float(score)
+
+def direction_score(track: Any, det_center: Tuple[float, float]) -> float:
+    if not hasattr(track, 'centroids') or len(track.centroids) < 2:
+        return 0.5
+    (x_prev, y_prev) = track.centroids[-2]
+    (x_last, y_last) = track.centroids[-1]
+    vx = x_last - x_prev
+    vy = y_last - y_prev
+    ux = det_center[0] - x_last
+    uy = det_center[1] - y_last
+    norm_v = math.hypot(vx, vy)
+    norm_u = math.hypot(ux, uy)
+    if norm_v == 0 or norm_u == 0:
+        return 0.5
+    cosang = (vx * ux + vy * uy) / (norm_v * norm_u)
+    score = (cosang + 1.0) / 2.0
+    return float(max(0.0, min(1.0, score)))
+
+def appearance_score(frame: np.ndarray, track: Any, det_bbox: BBox) -> float:
+    """HSV histogram correlation mapped to [0,1]. Returns 0.0 if not available."""
+    try:
+        det_hist = compute_hsv_hist(frame, det_bbox)
+    except Exception:
+        return 0.0
+    hsv_hist = getattr(track, 'hsv_hist', None)
+    if hsv_hist is None:
+        return 0.0
+    corr = cv2.compareHist(hsv_hist.astype('float32'), det_hist.astype('float32'), cv2.HISTCMP_CORREL)
+    corr = max(-1.0, min(1.0, float(corr)))
+    score = (corr + 1.0) / 2.0
+    return float(max(0.0, min(1.0, score)))

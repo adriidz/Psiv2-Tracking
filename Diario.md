@@ -10,6 +10,7 @@
 - Contador de vehículos que pasen por una línea horizontal (Miquel)
 #### Tareas empezadas:
 - Tracker de vehículos usando YOLOv11n y métricas de IoU y predicción de movimiento (Cristian). Mejorar tracker con predicción de movimiento, oclusiones, etc (Comentario Miquel)
+- Tracker híbrido (Adri)
 #### Tareas Completadas:
 - Tracker de vehículos usando YOLOv11n y métricas de IoU y predicción de movimiento (Cristian)
 - Contador de vehículos que pasen por una línea horizontal (Miquel)
@@ -43,3 +44,8 @@ Se ha añadido VehicleCounter.py que contiene la clase VehicleCounter encargada 
 Modifiqué también el process_frames donde crea la clase vehicleCounter y llama a update para contar los vehículos que pasan por la línea. 
 Además, dibuja la línea y el contador en el frame. 
 Parece hacer el conteo correctamente. Habría que prpbar todos los vídeos para asegurarse. Lo haré mas adelante o si lo haceis vosotros genial.
+
+#### Sesión Adri - 27/10
+Hice la clase TrackerHíbrido que usa IoU primero, y si el resultado no es convincente, usa otros criterios a los cuales les asigna un peso (importancia) a cada uno para calcular el nuevo resultado. Es como comentamos con el profe, en forma de 'cascada' solo que también usa pesos. He bajado a 3 el skip y ahora se hace la prueba con el output2.mp4 (el segundo video del campus), donde el contador va regulín. 
+
+P.D. intenté seguir el criterio que solo esté el _match pero no se hasta que punto las funciones de utilities son "universales" asi que bueno... están marcadas cuáles son

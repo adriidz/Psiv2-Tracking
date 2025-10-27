@@ -57,7 +57,7 @@ def parse_args():
     p.add_argument("--weights", type=str, default=str(YOLO_DIR / "weights" / "yolo11n.pt"))
     p.add_argument("--conf", type=float, default=0.4)
     p.add_argument("--imgsz", type=int, default=960)
-    p.add_argument("--skip", type=int, default=15, help="Run inference every N frames")
+    p.add_argument("--skip", type=int, default=3, help="Run inference every N frames")
     p.add_argument("--display", action="store_true", default=True, help="Show window (press Q to quit)")  # default ON
     p.add_argument("--reuse-last", action="store_true", default=True, help="Draw last detections on skipped frames")  # default True
     return p.parse_args()

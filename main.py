@@ -11,7 +11,7 @@ from ultralytics import YOLO
 from ultralytics.utils import SETTINGS
 from detection_frames import *
 
-VIDEO_PATH = Path(r"videos\output7.mp4")
+VIDEO_PATH = Path(r"videos\output2.mp4")
 
 def main():
     args = parse_args()
@@ -26,7 +26,7 @@ def main():
     model = init_model(args.weights)
     setup_display_if_needed(args.display, width, height)
 
-    tracker = Trackermalo(iou_threshold=0.15, max_lost=15, min_hits=1)
+    tracker = TrackerHíbrido(iou_threshold=0.6, max_lost=60, min_hits=2, appearance_threshold=0.4, cascade_threshold=0.4, debug=True)
 
     process_frames(cap, writer, model, args, width, height, fps_in, out_path, tracker)
 
