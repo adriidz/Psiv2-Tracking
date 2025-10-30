@@ -17,9 +17,10 @@ Output 5 resultados - Sequencia Long1:
 
 
 Output 7 resultados - Sequencia Short:
-Frames: 7288 | Elapsed: 334.6s | Out: C:\Users\mique\OneDrive\Escritorio\Proyectos\Psiv2-Tracking\runs\cars_video\cars_20251027_235840.mp4
-Arriba->Abajo: 2 | Abajo->Arriba: 6 CORRECTO
-Der->Izq: 26 | Izq->Der: 13
+
+Frames: 7288 | Elapsed: 276.6s | Out: C:\Users\mique\OneDrive\Escritorio\Proyectos\Psiv2-Tracking\runs\cars_video\cars_20251030_233657.mp4
+Arriba->Abajo: 2 | Abajo->Arriba: 6
+Der->Izq: 21 | Izq->Der: 29
 
 -------
 Con tracker Cristian:
