@@ -67,3 +67,6 @@ Faltaría tal vez hacer una opcion en el main para contar solo de arriba abajo, 
 ### Sesión Miquel 28/10
 Probados videos middle, shadow y short. Pequeños ajustes en la línea de conteo para que se vea mejor y esté en la posición correcta usando 
 line_start y line_end.
+
+### Sesion Adri - 30/10
+Chavales he estado demasiado tiempo intentando hacer ahi fine tuning pero no puedo masssss no se como podríamos mejroar los resultados. Yo lo dejaba así, hablaría de que hemos intentado valorar yolo11n y skip 2 VS yolo11s y skip 5 por ejemplo (mejor yolo a costa de menos frames de info, el nano es mejor la vdd según mis tests), de que hemos intentado aplicar el metodo de cascada, también está el filtro de Kalman pero como que no acaba de funcionar, en vez de usar greedy hay una cosa que es el método hungaro pero como que no se si es relevante del todo, etc. No se son las 2am llevo desde las 8 post trabajo de EGRA a mimir😴
