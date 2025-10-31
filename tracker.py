@@ -291,7 +291,7 @@ class Tracker_predict(Tracker):
         self.avg_speed = None
         self.speeds = np.array([])
 
-    def _match(self, detections: List[Tuple[BBox, float]]) -> Tuple[Dict[int, int], List[int], List[int]]:
+    def _match(self, detections: List[Tuple[BBox, float]], frame) -> Tuple[Dict[int, int], List[int], List[int]]:
         """
         Empareja tracks existentes con detecciones por IoU (greedy).
         returns:
@@ -307,6 +307,7 @@ class Tracker_predict(Tracker):
         iou_mat = np.zeros((len(track_ids), len(detections)), dtype=np.float32)
         for ti, tid in enumerate(track_ids):
             tb = predict_bbox(self.tracks[tid])
+            self.draw_prediction(frame, tb, self.min_hits)
             for di, (db, _) in enumerate(detections):
                 iou_mat[ti, di] = iou(tb, db)
 
@@ -341,7 +342,7 @@ class Tracker_predict(Tracker):
         Devuelve un dict {track_id: Car} con los tracks vigentes tras la actualización.
         """
         # 1) Emparejar
-        assignments, un_tracks, un_dets = self._match(detections)
+        assignments, un_tracks, un_dets = self._match(detections, frame)
 
         # 2) Actualizar tracks emparejados
         for track_id, det_idx in assignments.items():
@@ -371,4 +372,39 @@ class Tracker_predict(Tracker):
         if self.avg_speed:
             t.speed = self.avg_speed
         return t
+    
+    def draw_prediction(self, frame: np.ndarray, bbox, min_hits: Optional[int] = None) -> np.ndarray:
+        """Dibuja bbox + ID + dirección. min_hits permite ocultar tracks muy recientes."""
+        if min_hits is None:
+            min_hits = self.min_hits
+        for t in self.tracks.values():
+            # no dibujar si lleva más de 8 frames perdido (no afecta a la lógica de tracking)
+            if t.lost > 8:
+                continue
+            if t.hits < min_hits:
+                continue
+
+            x1, y1, x2, y2 = bbox
+
+            # color según estado
+            if t.lost > 0: color = (255, 0, 0)     # rojo para tracks perdidos recientemente
+            else: color = (0, 215, 255)   # amarillo para activos
+
+            # dibujar bbox
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+            # dirección y etiqueta
+            direction = t.current_direction()
+            lbl = f"ID {t.track_id}"
+            if direction: lbl += f" ({direction})"
+
+            # etiqueta sobre la caja
+            cv2.putText(frame, lbl, (x1, max(0, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2, cv2.LINE_AA)
+
+            # trayectoria (últimos puntos)
+            if len(t.centroids) >= 2:
+                for p, q in zip(t.centroids[-15:-1], t.centroids[-14:]):
+                    cv2.line(frame, (int(p[0]), int(p[1])), (int(q[0]), int(q[1])), color, 2)
+
+        return frame
     

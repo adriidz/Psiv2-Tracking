@@ -80,7 +80,7 @@ def predict_bbox(track):
             vy = y_last - y_prev
 
             # Factor según cuántos frames lleva perdido
-            factor = 1.1 * track.lost if hasattr(track, 'lost') else 1.0
+            factor = 1.1 * (track.lost + 1) if hasattr(track, 'lost') else 1.0
 
             # Desplazamiento total
             dx = vx * factor
@@ -90,9 +90,9 @@ def predict_bbox(track):
             x1, y1, x2, y2 = track.bbox
 
             # Simplemente trasladamos el bbox completo
-            new_bbox = [x1 + dx, y1 + dy, x2 + dx, y2 + dy]
+            new_bbox = [int(x1 + dx), int(y1 + dy), int(x2 + dx), int(y2 + dy)]
             return new_bbox
-        
+
 
     # Si solo tiene un centroide o bbox, lo devolvemos sin cambios
     return track.bbox
