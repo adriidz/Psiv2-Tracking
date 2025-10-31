@@ -19,7 +19,7 @@ Output 5 resultados - Sequencia Long1:
 Output 7 resultados - Sequencia Short:
 
 Frames: 7288 | Elapsed: 276.6s | Out: C:\Users\mique\OneDrive\Escritorio\Proyectos\Psiv2-Tracking\runs\cars_video\cars_20251030_233657.mp4
-Arriba->Abajo: 2 | Abajo->Arriba: 6
+Arriba->Abajo: 2 | Abajo->Arriba: 6 - CORRECTO
 Der->Izq: 21 | Izq->Der: 29
 
 -------
