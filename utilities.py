@@ -178,5 +178,4 @@ def appearance_score(frame: np.ndarray, track: Any, det_bbox: BBox) -> float:
         return 0.0
     corr = cv2.compareHist(hsv_hist.astype('float32'), det_hist.astype('float32'), cv2.HISTCMP_CORREL)
     corr = max(-1.0, min(1.0, float(corr)))
-    score = (corr + 1.0) / 2.0
-    return float(max(0.0, min(1.0, score)))
+    return float(min(1.0, corr))

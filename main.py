@@ -25,7 +25,7 @@ def main():
     writer, out_path, width, height, fps_in = prepare_writer(cap)
     model = init_model(args.weights)
     setup_display_if_needed(args.display, width, height)
-    tracker = Tracker_predict()
+    tracker = Tracker_color()
     #tracker = TrackerHíbrido(iou_threshold=0.6, max_lost=60, min_hits=2, appearance_threshold=0.4, cascade_threshold=0.4, debug=True)
 
     process_frames(cap, writer, model, args, width, height, fps_in, out_path, tracker)
