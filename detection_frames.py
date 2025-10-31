@@ -125,7 +125,7 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
     counter_left.set_line_position(height, width)
 
     # Línea vertical derecha (solo cuenta izq->der)
-    counter_right = VehicleCounter(line_position=0.95, margin=3, orientation='vertical', direction='left_to_right')
+    counter_right = VehicleCounter(line_position=0.9, margin=3, orientation='vertical', direction='left_to_right')
     counter_right.set_line_position(height, width)
 
     frame_period = 1.0 / (fps_in if fps_in > 0 else 30.0)
@@ -155,8 +155,8 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
             if last_result is not None:
                 print(f"Frame {frame_idx}: {len(last_result.boxes)} cars")
 
-        detections = yolo_result_to_detections(last_result) if last_result is not None else []
-        track_ids = tracker.update(frame, detections)
+            detections = yolo_result_to_detections(last_result) if last_result is not None else []
+            track_ids = tracker.update(frame, detections)
 
         # Actualizar los tres contadores con frame_shape y límites de línea
         for track_id, car in track_ids.items():

@@ -30,9 +30,9 @@ class Tracker:
         self.tracks: Dict[int, Car] = {}
 
     def _create_track(self, frame: np.ndarray, bbox: BBox, conf: float) -> Car:
-        t = Car(track_id=self._next_id, bbox=bbox, confidence=conf)
+        t = Car(track_id=self._next_id, bbox=bbox, confidence=conf, first_bbox=bbox)
         t.centroids.append(bbox_center(bbox))
-        t.hsv_hist = compute_hsv_hist(frame, bbox)
+        # t.hsv_hist = compute_hsv_hist(frame, bbox)
         self.tracks[self._next_id] = t
         self._next_id += 1
         return t
@@ -285,10 +285,90 @@ class TrackerHíbrido(Tracker):
         return final_assignments, new_unassigned_tracks, new_unassigned_dets
 
 
-class Trackermalo(Tracker):
+class Tracker_predict(Tracker):
     def __init__(self, iou_threshold = 0.3, max_lost = 15, min_hits = 1):
         super().__init__(iou_threshold, max_lost, min_hits)
+        self.avg_speed = None
+        self.speeds = np.array([])
+
+    def _match(self, detections: List[Tuple[BBox, float]]) -> Tuple[Dict[int, int], List[int], List[int]]:
+        """
+        Empareja tracks existentes con detecciones por IoU (greedy).
+        returns:
+            assignments: dict {track_id -> det_idx}
+            unassigned_tracks: list[track_id]
+            unassigned_dets: list[det_idx]
+        """
+        track_ids = list(self.tracks.keys())
+        if not track_ids or not detections:
+            return {}, track_ids, list(range(len(detections)))
+
+        # Matriz IoU [num_tracks x num_dets]
+        iou_mat = np.zeros((len(track_ids), len(detections)), dtype=np.float32)
+        for ti, tid in enumerate(track_ids):
+            tb = predict_bbox(self.tracks[tid])
+            for di, (db, _) in enumerate(detections):
+                iou_mat[ti, di] = iou(tb, db)
+
+        assignments: Dict[int, int] = {}
+        used_tracks = set()
+        used_dets = set()
+
+        # Asignación greedy por IoU máximo
+        while True:
+            ti, di = np.unravel_index(np.argmax(iou_mat), iou_mat.shape)
+            best = iou_mat[ti, di]
+            if best < self.iou_threshold:
+                break
+            if ti in used_tracks or di in used_dets:
+                iou_mat[ti, di] = -1  # invalidar y continuar
+                continue
+            track_id = track_ids[ti]
+            assignments[track_id] = di
+            used_tracks.add(ti)
+            used_dets.add(di)
+            iou_mat[ti, :] = -1
+            iou_mat[:, di] = -1
+
+        unassigned_tracks = [track_ids[i] for i in range(len(track_ids)) if i not in used_tracks]
+        unassigned_dets = [i for i in range(len(detections)) if i not in used_dets]
+        return assignments, unassigned_tracks, unassigned_dets
     
-    def _match(self, detections):
-        # Cambios aquí
-        return None, None, None
+    def update(self, frame: np.ndarray, detections: List[Tuple[BBox, float]]) -> Dict[int, Car]:
+        """
+        Actualiza el conjunto de tracks con las detecciones del frame actual.
+        detections: lista de (bbox, conf) con bbox=(x1,y1,x2,y2)
+        Devuelve un dict {track_id: Car} con los tracks vigentes tras la actualización.
+        """
+        # 1) Emparejar
+        assignments, un_tracks, un_dets = self._match(detections)
+
+        # 2) Actualizar tracks emparejados
+        for track_id, det_idx in assignments.items():
+            bbox, conf = detections[det_idx]
+            self.tracks[track_id].update(frame, bbox, conf)
+
+        # 3) Marcar como perdidos los no emparejados
+        for tid in un_tracks:
+            self.tracks[tid].mark_missed()
+
+        # 4) Crear nuevos tracks para detecciones no emparejadas
+        for det_idx in un_dets:
+            bbox, conf = detections[det_idx]
+            self._create_track(frame, bbox, conf)
+
+        # 5) Eliminar tracks vencidos
+        to_delete = [tid for tid, t in self.tracks.items() if t.lost > self.max_lost]
+        for tid in to_delete:
+            self.speeds = np.append(self.speeds, self.tracks[tid].speed_x)
+            self.avg_speed = np.mean(self.speeds)
+            del self.tracks[tid]
+
+        return self.tracks
+    
+    def _create_track(self, frame, bbox, conf):
+        t =  super()._create_track(frame, bbox, conf)
+        if self.avg_speed:
+            t.speed = self.avg_speed
+        return t
+    

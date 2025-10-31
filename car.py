@@ -14,7 +14,10 @@ BBox = Tuple[int, int, int, int]  # (x1, y1, x2, y2)
 class Car:
     track_id: int
     bbox: BBox
+    first_bbox: BBox
     confidence: float
+    speed_x: float = 0
+    speed_y: float = 0
     created_at: float = field(default_factory=time.time)
     last_seen: float = field(default_factory=time.time)
     hits: int = 1                 # nº de veces emparejado con una detección
@@ -32,9 +35,17 @@ class Car:
         # (opcional) refrescar histograma cada n actualizaciones para ahorrar coste
         if self.hsv_hist is None or (self.hits % 10 == 0):
             self.hsv_hist = compute_hsv_hist(frame, bbox)
+        self.speed_x, self.speed_y = self.calc_speed()
 
     def mark_missed(self):
         self.lost += 1
+
+    def calc_speed(self):
+        x1, y1 = self.centroids[-1]
+        x2, y2 = self.centroids[-2]
+        vx = x1 - x2
+        vy = y1 - y2
+        return vx, vy
 
     @property
     def age(self) -> float:

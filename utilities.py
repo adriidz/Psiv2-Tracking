@@ -58,11 +58,44 @@ def predict_center(track: Any) -> Tuple[float, float]:
         (x_last, y_last) = track.centroids[-1]
         vx = x_last - x_prev
         vy = y_last - y_prev
-        return (x_last + 1.1 * vx, y_last + 1.1 * vy)
+        return (x_last + 1.1 * vx * track.lost, y_last + 1.1 * vy * track.lost)
     if hasattr(track, 'centroids') and len(track.centroids) == 1:
         return track.centroids[-1]
     # fallback to bbox center
     return bbox_center(track.bbox)
+
+def predict_bbox(track):
+    """
+    Predice el siguiente bbox desplazando el último bbox según la velocidad calculada
+    a partir de los dos últimos centroides.
+    """
+    # Si hay al menos dos centroides, podemos calcular la velocidad
+    if hasattr(track, 'centroids'):
+        if len(track.centroids) >= 2:
+            (x_prev, y_prev) = track.centroids[-2]
+            (x_last, y_last) = track.centroids[-1]
+
+            # Velocidad (diferencia entre los dos últimos centros)
+            vx = x_last - x_prev
+            vy = y_last - y_prev
+
+            # Factor según cuántos frames lleva perdido
+            factor = 1.1 * track.lost if hasattr(track, 'lost') else 1.0
+
+            # Desplazamiento total
+            dx = vx * factor
+            dy = vy * factor
+
+            # Último bbox
+            x1, y1, x2, y2 = track.bbox
+
+            # Simplemente trasladamos el bbox completo
+            new_bbox = [x1 + dx, y1 + dy, x2 + dx, y2 + dy]
+            return new_bbox
+        
+
+    # Si solo tiene un centroide o bbox, lo devolvemos sin cambios
+    return track.bbox
 
 def aspect_score(track: Any, det_bbox: BBox) -> float:
     tw = track.bbox[2] - track.bbox[0]
