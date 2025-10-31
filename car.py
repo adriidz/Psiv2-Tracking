@@ -24,6 +24,7 @@ class Car:
     lost: int = 0                 # nº de frames consecutivos sin ser emparejado
     centroids: List[Tuple[float, float]] = field(default_factory=list)
     hsv_hist: Optional[np.ndarray] = None
+    grad_hist: Optional[np.ndarray] = None
 
     def update(self, frame: np.ndarray, bbox: BBox, confidence: float):
         self.bbox = bbox
@@ -35,6 +36,8 @@ class Car:
         # (opcional) refrescar histograma cada n actualizaciones para ahorrar coste
         if self.hsv_hist is None or (self.hits % 10 == 0):
             self.hsv_hist = compute_hsv_hist(frame, bbox)
+        if self.grad_hist is None or (self.hits % 10 == 0):
+            self.grad_hist = compute_grad_hist(frame, bbox)
         self.speed_x, self.speed_y = self.calc_speed()
 
     def mark_missed(self):

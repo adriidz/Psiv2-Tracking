@@ -410,8 +410,9 @@ class Tracker_predict(Tracker):
     
 
 class Tracker_color(Tracker):
-    def __init__(self, iou_threshold = 0.3, max_lost = 15, min_hits = 1):
+    def __init__(self, iou_threshold = 0.3, max_lost = 15, min_hits = 1, appearance_threshold=0.6):
         super().__init__(iou_threshold, max_lost, min_hits)
+        self.appearance_threshold = appearance_threshold
     
     def _create_track(self, frame: np.ndarray, bbox: BBox, conf: float) -> Car:
         t = Car(track_id=self._next_id, bbox=bbox, confidence=conf, first_bbox=bbox)
@@ -522,3 +523,116 @@ class Tracker_color(Tracker):
 
         return self.tracks
     
+class Tracker_grad(Tracker):
+    def __init__(self, iou_threshold = 0.3, max_lost = 15, min_hits = 1, shape_threshold=0.55):
+        super().__init__(iou_threshold, max_lost, min_hits)
+        self.shape_threshold = shape_threshold
+
+    def _create_track(self, frame: np.ndarray, bbox: BBox, conf: float) -> Car:
+        t = Car(track_id=self._next_id, bbox=bbox, confidence=conf, first_bbox=bbox)
+        t.centroids.append(bbox_center(bbox))
+        t.grad_hist = compute_grad_hist(frame, bbox)
+        self.tracks[self._next_id] = t
+        self._next_id += 1
+        return t
+
+    def _match(self, detections: List[Tuple[BBox, float]], frame) -> Tuple[Dict[int, int], List[int], List[int]]:
+        """
+        Empareja tracks existentes con detecciones por IoU (greedy).
+        returns:
+            assignments: dict {track_id -> det_idx}
+            unassigned_tracks: list[track_id]
+            unassigned_dets: list[det_idx]
+        """
+        track_ids = list(self.tracks.keys())
+        if not track_ids or not detections:
+            return {}, track_ids, list(range(len(detections)))
+
+        # Matriz IoU [num_tracks x num_dets]
+        iou_mat = np.zeros((len(track_ids), len(detections)), dtype=np.float32)
+        for ti, tid in enumerate(track_ids):
+            tb = predict_bbox(self.tracks[tid])
+            self.draw_prediction(frame, tb, self.min_hits)
+            for di, (db, _) in enumerate(detections):
+                iou_mat[ti, di] = iou(tb, db)
+
+        assignments: Dict[int, int] = {}
+        used_tracks = set()
+        used_dets = set()
+
+        # Asignación greedy por IoU máximo
+        while True:
+            ti, di = np.unravel_index(np.argmax(iou_mat), iou_mat.shape)
+            best = iou_mat[ti, di]
+            if best < self.iou_threshold:
+                break
+            if ti in used_tracks or di in used_dets:
+                iou_mat[ti, di] = -1  # invalidar y continuar
+                continue
+            track_id = track_ids[ti]
+            assignments[track_id] = di
+            used_tracks.add(ti)
+            used_dets.add(di)
+            iou_mat[ti, :] = -1
+            iou_mat[:, di] = -1
+
+        unassigned_tracks = [track_ids[i] for i in range(len(track_ids)) if i not in used_tracks]
+        unassigned_dets = [i for i in range(len(detections)) if i not in used_dets]
+
+        # Reasignacion por colores
+        if unassigned_tracks and unassigned_dets:
+            app_mat = np.zeros((len(unassigned_tracks), len(unassigned_dets)), dtype=np.float32)
+            for ti, tid in enumerate(unassigned_tracks):
+                track = self.tracks[tid]
+                for dj, det_idx in enumerate(unassigned_dets):
+                    db, _ = detections[det_idx]
+                    app_mat[ti, dj] = shape_score(frame, track, db)
+
+            while True:
+                ti, di = np.unravel_index(np.argmax(app_mat), app_mat.shape)
+                best = app_mat[ti, di]
+                if best < getattr(self, "shape_threshold", 0.55):
+                    break
+                track_id = unassigned_tracks[ti]
+                det_idx = unassigned_dets[di]
+                assignments[track_id] = det_idx
+                used_tracks.add(track_ids.index(track_id))
+                used_dets.add(det_idx)
+                app_mat[ti, :] = -1
+                app_mat[:, di] = -1
+
+            # Recalcular los no asignados tras esta segunda fase
+            unassigned_tracks = [tid for tid in track_ids if tid not in assignments]
+            unassigned_dets = [i for i in range(len(detections)) if i not in used_dets]
+
+        return assignments, unassigned_tracks, unassigned_dets
+    
+    def update(self, frame: np.ndarray, detections: List[Tuple[BBox, float]]) -> Dict[int, Car]:
+        """
+        Actualiza el conjunto de tracks con las detecciones del frame actual.
+        detections: lista de (bbox, conf) con bbox=(x1,y1,x2,y2)
+        Devuelve un dict {track_id: Car} con los tracks vigentes tras la actualización.
+        """
+        # 1) Emparejar
+        assignments, un_tracks, un_dets = self._match(detections, frame)
+
+        # 2) Actualizar tracks emparejados
+        for track_id, det_idx in assignments.items():
+            bbox, conf = detections[det_idx]
+            self.tracks[track_id].update(frame, bbox, conf)
+
+        # 3) Marcar como perdidos los no emparejados
+        for tid in un_tracks:
+            self.tracks[tid].mark_missed()
+
+        # 4) Crear nuevos tracks para detecciones no emparejadas
+        for det_idx in un_dets:
+            bbox, conf = detections[det_idx]
+            self._create_track(frame, bbox, conf)
+
+        # 5) Eliminar tracks vencidos
+        to_delete = [tid for tid, t in self.tracks.items() if t.lost > self.max_lost]
+        for tid in to_delete:
+            del self.tracks[tid]
+
+        return self.tracks

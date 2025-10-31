@@ -49,6 +49,29 @@ def compute_hsv_hist(frame: np.ndarray, bbox: BBox, bins: int = 16) -> np.ndarra
         hist /= s
     return hist
 
+def compute_grad_hist(frame: np.ndarray, bbox: Tuple[int, int, int, int], bins: int = 9) -> np.ndarray:
+    """
+    Calcula un histograma de orientaciones de gradiente (HOG simplificado)
+    dentro de una bounding box.
+    """
+    x1, y1, x2, y2 = map(int, bbox)
+    patch = frame[y1:y2, x1:x2]
+
+    # Convertir a escala de grises
+    gray = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
+
+    # Gradientes Sobel
+    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+
+    # Magnitud y orientación
+    mag, ang = cv2.cartToPolar(gx, gy, angleInDegrees=True)
+
+    # Histograma de orientaciones (0–180 grados)
+    hist, _ = np.histogram(ang, bins=bins, range=(0, 180), weights=mag)
+    hist = cv2.normalize(hist, hist).flatten()  # normalizamos
+    return hist
+
 # ---------------- Additional scoring utilities for hybrid tracker ----------------
 
 def predict_center(track: Any) -> Tuple[float, float]:
@@ -179,3 +202,25 @@ def appearance_score(frame: np.ndarray, track: Any, det_bbox: BBox) -> float:
     corr = cv2.compareHist(hsv_hist.astype('float32'), det_hist.astype('float32'), cv2.HISTCMP_CORREL)
     corr = max(-1.0, min(1.0, float(corr)))
     return float(min(1.0, corr))
+
+def shape_score(frame: np.ndarray, track: Any, det_bbox: Tuple[int, int, int, int]) -> float:
+    """
+    Compara la similitud de forma entre el objeto del track y la detección
+    usando histogramas de orientaciones de gradiente.
+    Devuelve un score entre 0 y 1.
+    """
+    try:
+        det_hist = compute_grad_hist(frame, det_bbox)
+    except Exception:
+        return 0.0
+
+    grad_hist = getattr(track, 'grad_hist', None)
+    if grad_hist is None:
+        return 0.0
+
+    corr = cv2.compareHist(grad_hist.astype('float32'), det_hist.astype('float32'), cv2.HISTCMP_CORREL)
+    corr = max(-1.0, min(1.0, float(corr)))
+
+    # Reescalar de [-1,1] a [0,1]
+    score = (corr + 1.0) / 2.0
+    return float(max(0.0, min(1.0, score)))
