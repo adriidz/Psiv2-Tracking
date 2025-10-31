@@ -11,7 +11,7 @@ from ultralytics import YOLO
 from ultralytics.utils import SETTINGS
 from detection_frames import *
 
-VIDEO_PATH = Path(r"videos\output7.mp4")
+VIDEO_PATH = Path(r"videos\middle.mp4")
 
 def main():
     args = parse_args()

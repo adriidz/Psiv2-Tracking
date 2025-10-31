@@ -55,9 +55,9 @@ def parse_args():
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--weights", type=str, default=str(YOLO_DIR / "weights" / "yolo11n.pt"))
-    p.add_argument("--conf", type=float, default=0.4)
+    p.add_argument("--conf", type=float, default=0.5)
     p.add_argument("--imgsz", type=int, default=960)
-    p.add_argument("--skip", type=int, default=3, help="Run inference every N frames")
+    p.add_argument("--skip", type=int, default=2, help="Run inference every N frames")
     p.add_argument("--display", action="store_true", default=True, help="Show window (press Q to quit)")  # default ON
     p.add_argument("--reuse-last", action="store_true", default=True, help="Draw last detections on skipped frames")  # default True
     return p.parse_args()
@@ -121,11 +121,11 @@ def process_frames(cap: cv2.VideoCapture, writer: cv2.VideoWriter, model, args, 
     counter_horizontal.set_line_position(height)
 
     # Línea vertical izquierda (solo cuenta der->izq)
-    counter_left = VehicleCounter(line_position=0.25, margin=3, orientation='vertical', direction='right_to_left')
+    counter_left = VehicleCounter(line_position=0.3, margin=3, orientation='vertical', direction='right_to_left')
     counter_left.set_line_position(height, width)
 
     # Línea vertical derecha (solo cuenta izq->der)
-    counter_right = VehicleCounter(line_position=0.9, margin=3, orientation='vertical', direction='left_to_right')
+    counter_right = VehicleCounter(line_position=0.85, margin=3, orientation='vertical', direction='left_to_right')
     counter_right.set_line_position(height, width)
 
     frame_period = 1.0 / (fps_in if fps_in > 0 else 30.0)

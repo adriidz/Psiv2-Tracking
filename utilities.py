@@ -69,29 +69,58 @@ def predict_bbox(track):
     Predice el siguiente bbox desplazando el último bbox según la velocidad calculada
     a partir de los dos últimos centroides.
     """
-    # Si hay al menos dos centroides, podemos calcular la velocidad
-    if hasattr(track, 'centroids'):
-        if len(track.centroids) >= 2:
-            (x_prev, y_prev) = track.centroids[-2]
-            (x_last, y_last) = track.centroids[-1]
+    # # Si hay al menos dos centroides, podemos calcular la velocidad
+    # if hasattr(track, 'centroids'):
+    #     if len(track.centroids) >= 2:
+    #         (x_prev, y_prev) = track.centroids[-2]
+    #         (x_last, y_last) = track.centroids[-1]
 
-            # Velocidad (diferencia entre los dos últimos centros)
-            vx = x_last - x_prev
-            vy = y_last - y_prev
+    #         # Velocidad (diferencia entre los dos últimos centros)
+    #         vx = x_last - x_prev
+    #         vy = y_last - y_prev
 
-            # Factor según cuántos frames lleva perdido
-            factor = 1.1 * (track.lost + 1) if hasattr(track, 'lost') else 1.0
+    #         # Factor según cuántos frames lleva perdido
+    #         factor = 1.1 * (track.lost + 1) if hasattr(track, 'lost') else 1.0
 
-            # Desplazamiento total
-            dx = vx * factor
-            dy = vy * factor
+    #         # Desplazamiento total
+    #         dx = vx * factor
+    #         dy = vy * factor
 
-            # Último bbox
-            x1, y1, x2, y2 = track.bbox
+    #         # Último bbox
+    #         x1, y1, x2, y2 = track.bbox
 
-            # Simplemente trasladamos el bbox completo
-            new_bbox = [int(x1 + dx), int(y1 + dy), int(x2 + dx), int(y2 + dy)]
-            return new_bbox
+    #         # Simplemente trasladamos el bbox completo
+    #         new_bbox = [int(x1 + dx), int(y1 + dy), int(x2 + dx), int(y2 + dy)]
+    #         return new_bbox
+        
+    if hasattr(track, 'centroids') and len(track.centroids) >= 2:
+        # Usar últimos N centroides para estimar velocidad
+        n = min(4, len(track.centroids))
+        recent = track.centroids[-n:]
+        
+        # Calcular velocidad promedio
+        vx_total = 0.0
+        vy_total = 0.0
+        for i in range(1, len(recent)):
+            vx_total += recent[i][0] - recent[i-1][0]
+            vy_total += recent[i][1] - recent[i-1][1]
+        
+        vx = vx_total / n
+        vy = vy_total / n
+
+        # Factor según cuántos frames lleva perdido
+        factor = 1.1 * (track.lost + 1) if hasattr(track, 'lost') else 1.0
+        # Predecir posición
+        # Desplazamiento total
+        dx = vx * factor
+        dy = vy * factor
+
+        # Último bbox
+        x1, y1, x2, y2 = track.bbox
+
+        # Simplemente trasladamos el bbox completo
+        new_bbox = [int(x1 + dx), int(y1 + dy), int(x2 + dx), int(y2 + dy)]
+        return new_bbox   
 
 
     # Si solo tiene un centroide o bbox, lo devolvemos sin cambios
