@@ -1,0 +1,9 @@
+# Requisitos mínimos para Psiv2-Tracking
+ultralytics>=8.0.0
+torch>=2.0.0
+numpy>=1.24.0
+opencv-python>=4.7.0
+# opcionales/utiles
+# opencv-python-headless (si no necesitas GUI)
+# tqdm (si quieres barras de progreso)
+

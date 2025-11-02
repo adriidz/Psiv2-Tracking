@@ -1,0 +1,16 @@
+name: psiv2-tracking
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy>=1.24
+  - opencv>=4.7
+  - pip:
+    - ultralytics>=8.0.0
+    - torch>=2.0.0
+    - tqdm>=4.65.0
+# Nota: Para usar CUDA instala la versión de torch correspondiente según https://pytorch.org/
+# Ejemplo (fuera de conda env): pip install --index-url https://download.pytorch.org/whl/cu121 torch
+

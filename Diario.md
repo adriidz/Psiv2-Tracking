@@ -70,3 +70,7 @@ line_start y line_end.
 
 ### Sesion Adri - 30/10
 Chavales he estado demasiado tiempo intentando hacer ahi fine tuning pero no puedo masssss no se como podríamos mejroar los resultados. Yo lo dejaba así, hablaría de que hemos intentado valorar yolo11n y skip 2 VS yolo11s y skip 5 por ejemplo (mejor yolo a costa de menos frames de info, el nano es mejor la vdd según mis tests), de que hemos intentado aplicar el metodo de cascada, también está el filtro de Kalman pero como que no acaba de funcionar, en vez de usar greedy hay una cosa que es el método hungaro pero como que no se si es relevante del todo, etc. No se son las 2am llevo desde las 8 post trabajo de EGRA a mimir😴
+
+### Sesión Miquel - 02/11
+Terminado el readme con la estructura del proyecto, explicación del pipeline, descripción de la detección y del tracking, tipos de trackers usados y resultados obtenidos.
+Proyecto finalizado.
